@@ -6,6 +6,7 @@
 const express = require('express');
 const mongoose = require('mongoose');
 const cors = require('cors');
+const verifyFirebaseToken = require('./middleware/auth');
 require('dotenv').config();
 
 const app = express();
@@ -105,7 +106,7 @@ app.get('/', (req, res) => {
 });
 
 // ✅ CREATE - Créer une habitude
-app.post('/habits', validateHabit, async (req, res) => {
+app.post('/habits', verifyFirebaseToken, validateHabit, async (req, res) => {
     try {
         const { userId, name } = req.body;
 
@@ -134,18 +135,12 @@ app.post('/habits', validateHabit, async (req, res) => {
 });
 
 // 📋 READ - Obtenir toutes les habitudes d'un utilisateur
-app.get('/habits/:userId', async (req, res) => {
+app.get('/habits/:userId', verifyFirebaseToken, async (req, res) => {
     try {
-        const { userId } = req.params;
+        // Use userId from authenticated token instead of params for security
+        const userId = req.userId;
 
-        if (!userId || userId.trim() === '') {
-            return res.status(400).json({
-                success: false,
-                error: 'userId est requis'
-            });
-        }
-
-        const habits = await Habit.find({ userId: userId.trim() })
+        const habits = await Habit.find({ userId: userId })
             .sort({ createdAt: -1 });
 
         console.log(`📋 ${habits.length} habitudes trouvées pour user: ${userId}`);
@@ -166,10 +161,11 @@ app.get('/habits/:userId', async (req, res) => {
 });
 
 // ✏️ UPDATE - Modifier une habitude
-app.put('/habits/:id', async (req, res) => {
+app.put('/habits/:id', verifyFirebaseToken, async (req, res) => {
     try {
         const { id } = req.params;
         const { name } = req.body;
+        const userId = req.userId;
 
         if (!name || typeof name !== 'string' || name.trim() === '') {
             return res.status(400).json({
@@ -178,8 +174,8 @@ app.put('/habits/:id', async (req, res) => {
             });
         }
 
-        const habit = await Habit.findByIdAndUpdate(
-            id,
+        const habit = await Habit.findOneAndUpdate(
+            { _id: id, userId: userId }, // Only update if habit belongs to user
             { name: name.trim() },
             { new: true, runValidators: true }
         );
@@ -187,7 +183,7 @@ app.put('/habits/:id', async (req, res) => {
         if (!habit) {
             return res.status(404).json({
                 success: false,
-                error: 'Habitude non trouvée'
+                error: 'Habitude non trouvée ou accès non autorisé'
             });
         }
 
@@ -209,16 +205,17 @@ app.put('/habits/:id', async (req, res) => {
 });
 
 // 🗑️ DELETE - Supprimer une habitude
-app.delete('/habits/:id', async (req, res) => {
+app.delete('/habits/:id', verifyFirebaseToken, async (req, res) => {
     try {
         const { id } = req.params;
+        const userId = req.userId;
 
-        const habit = await Habit.findByIdAndDelete(id);
+        const habit = await Habit.findOneAndDelete({ _id: id, userId: userId }); // Only delete if habit belongs to user
 
         if (!habit) {
             return res.status(404).json({
                 success: false,
-                error: 'Habitude non trouvée'
+                error: 'Habitude non trouvée ou accès non autorisé'
             });
         }
 
