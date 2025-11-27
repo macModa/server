@@ -1,348 +1,374 @@
-# 🚀 Habit Coach Backend API
+# Habit Tracker Backend - Secure Edition 🚀
 
-Backend Node.js/Express avec MongoDB pour l'application Habit Coach.
+Production-ready Node.js backend with Firebase Authentication, MongoDB, and Express.
 
-## 📋 Stack Technique
+## Features
 
-- **Node.js** v18+
-- **Express** v4 - Framework web
-- **MongoDB** - Base de données
-- **Mongoose** - ODM MongoDB
-- **bcryptjs** - Hash des mots de passe
-- **helmet** - Sécurité HTTP
-- **cors** - Gestion CORS
+- 🔐 **Firebase Authentication** - Secure token-based authentication
+- 🛡️ **Authorization** - Users can only access their own habits
+- 🗄️ **MongoDB** - Scalable NoSQL database
+- ⚡️ **Express** - Fast, minimalist web framework  
+- 🔒 **Security** - Helmet + Rate limiting + CORS
+- ✅ **Validation** - Request validation and error handling
+- 📊 **Indexing** - Optimized database queries
 
-## 🛠️ Installation
+## Project Structure
 
-### 1. Installer les dépendances
+```
+.backend/
+├── app.js                    # Main application entry point
+├── firebase.js               # Firebase Admin SDK initialization
+├── models/
+│   └── Habit.js              # Mongoose Habit model
+├── middleware/
+│   └── auth.js               # Firebase token verification
+├── routes/
+│   └── habitRoutes.js        # Protected CRUD routes
+├── package.json              # Dependencies
+├── .env                      # Environment variables (create from .env.example)
+└── .env.example              # Environment template
+```
+
+## Prerequisites
+
+- Node.js >= 18.0.0
+- npm >= 9.0.0
+- MongoDB (local or Atlas)
+- Firebase project with Authentication enabled
+
+## Quick Start
+
+### 1. Install Dependencies
 
 ```bash
 cd .backend
 npm install
 ```
 
-### 2. Configuration MongoDB Atlas
+### 2. Configure Firebase
 
-1. Créer un compte sur [MongoDB Atlas](https://www.mongodb.com/cloud/atlas)
-2. Créer un cluster gratuit
-3. Créer un utilisateur de base de données
-4. Obtenir l'URI de connexion
+1. Go to [Firebase Console](https://console.firebase.google.com/)
+2. Select your project
+3. Go to **Project Settings** > **Service Accounts**
+4. Click **Generate New Private Key**
+5. Save the JSON file
 
-### 3. Configuration de l'environnement
-
-Copier le fichier `.env.example` vers `.env`:
+### 3. Setup Environment Variables
 
 ```bash
 cp .env.example .env
 ```
 
-Éditer `.env` et remplacer les valeurs:
+Edit `.env` and add your configuration:
 
 ```env
 PORT=3000
-MONGODB_URI=mongodb+srv://votre-utilisateur:votre-mot-de-passe@cluster0.xxxxx.mongodb.net/habitcoach?retryWrites=true&w=majority
 NODE_ENV=development
+MONGODB_URI=mongodb://localhost:27017/habits
+FIREBASE_SERVICE_ACCOUNT_KEY={"type":"service_account",...}
 ```
 
-## 🚀 Démarrage
+> **Important**: The `FIREBASE_SERVICE_ACCOUNT_KEY` must be the entire JSON content as a single line
 
-### Mode développement (avec auto-reload)
+### 4. Start the Server
 
+**Development:**
 ```bash
 npm run dev
 ```
 
-### Mode production
-
+**Production:**
 ```bash
 npm start
 ```
 
-Le serveur démarre sur `http://localhost:3000`
-
-## 📡 API Endpoints
+## API Documentation
 
 ### Base URL
 ```
-http://localhost:3000/api
+http://localhost:3000
 ```
 
-### Authentification
+### Authentication
 
-#### Inscription
+All `/habits` endpoints require a Firebase ID token in the Authorization header:
+
+```
+Authorization: Bearer <firebase-id-token>
+```
+
+### Endpoints
+
+#### 🏠 Health Check (Public)
 ```http
-POST /api/auth/inscription
-Content-Type: application/json
+GET /
+```
 
+Response:
+```json
 {
-  "nom": "Jean Dupont",
-  "email": "jean@example.com",
-  "motDePasse": "password123"
+  "success": true,
+  "message": "🚀 Habit Tracker API - Secure Edition",
+  "version": "2.0.0",
+  "status": "running"
 }
 ```
 
-**Réponse:**
+#### 📊 API Status (Public)
+```http
+GET /api/status
+```
+
+Response:
 ```json
 {
-  "message": "Utilisateur créé avec succès",
-  "user": {
-    "_id": "507f1f77bcf86cd799439011",
-    "nom": "Jean Dupont",
-    "email": "jean@example.com",
-    "points": 0,
-    "niveau": 1,
-    "badges": [],
-    "createdAt": "2025-11-25T13:00:00.000Z"
+  "success": true,
+  "status": "healthy",
+  "database": "connected",
+  "timestamp": "2025-11-27T12:00:00.000Z"
+}
+```
+
+#### ✅ Create Habit (Protected)
+```http
+POST /habits
+Authorization: Bearer <token>
+Content-Type: application/json
+
+{
+  "name": "Exercise"
+}
+```
+
+Response:
+```json
+{
+  "success": true,
+  "message": "Habit created successfully",
+  "data": {
+    "id": "507f1f77bcf86cd799439011",
+    "userId": "firebase-uid",
+    "name": "Exercise",
+    "createdAt": "2025-11-27T12:00:00.000Z",
+    "updatedAt": "2025-11-27T12:00:00.000Z"
   }
 }
 ```
 
-#### Connexion
+#### 📋 Get All Habits (Protected)
 ```http
-POST /api/auth/connexion
-Content-Type: application/json
-
-{
-  "email": "jean@example.com",
-  "motDePasse": "password123"
-}
+GET /habits
+Authorization: Bearer <token>
 ```
 
-### Habitudes
-
-#### Créer une habitude
-```http
-POST /api/habitudes
-Content-Type: application/json
-
-{
-  "userId": "507f1f77bcf86cd799439011",
-  "nom": "Boire de l'eau",
-  "icone": "💧",
-  "couleur": "#6366f1",
-  "objectifQuotidien": 8,
-  "unite": "verres",
-  "rappel": true,
-  "heureRappel": "09:00"
-}
-```
-
-**Réponse:**
+Response:
 ```json
 {
-  "_id": "507f191e810c19729de860ea",
-  "userId": "507f1f77bcf86cd799439011",
-  "nom": "Boire de l'eau",
-  "icone": "💧",
-  "couleur": "#6366f1",
-  "objectifQuotidien": 8,
-  "unite": "verres",
-  "rappel": true,
-  "heureRappel": "09:00",
-  "createdAt": "2025-11-25T13:00:00.000Z"
+  "success": true,
+  "count": 2,
+  "data": [
+    {
+      "id": "507f1f77bcf86cd799439011",
+      "userId": "firebase-uid",
+      "name": "Exercise",
+      "createdAt": "2025-11-27T12:00:00.000Z",
+      "updatedAt": "2025-11-27T12:00:00.000Z"
+    }
+  ]
 }
 ```
 
-#### Obtenir les habitudes d'un utilisateur
+#### ✏️ Update Habit (Protected)
 ```http
-GET /api/habitudes/user/:userId
-```
-
-#### Modifier une habitude
-```http
-PUT /api/habitudes/:id
+PUT /habits/:id
+Authorization: Bearer <token>
 Content-Type: application/json
 
 {
-  "nom": "Boire plus d'eau",
-  "objectifQuotidien": 10
+  "name": "Morning Exercise"
 }
 ```
 
-#### Supprimer une habitude
+> **Security**: Can only update your own habits
+
+#### 🗑️ Delete Habit (Protected)
 ```http
-DELETE /api/habitudes/:id
+DELETE /habits/:id
+Authorization: Bearer <token>
 ```
 
-### Progressions
+> **Security**: Can only delete your own habits
 
-#### Enregistrer une progression
-```http
-POST /api/progressions
-Content-Type: application/json
+### Error Responses
 
-{
-  "userId": "507f1f77bcf86cd799439011",
-  "habitudeId": "507f191e810c19729de860ea",
-  "date": "2025-11-25",
-  "valeur": 8
-}
-```
-
-#### Obtenir les progressions d'une date
-```http
-GET /api/progressions/user/:userId/date/:date
-```
-
-Exemple: `/api/progressions/user/507f1f77bcf86cd799439011/date/2025-11-25`
-
-#### Obtenir l'historique d'une habitude
-```http
-GET /api/progressions/habitude/:habitudeId
-```
-
-#### Statistiques hebdomadaires
-```http
-GET /api/progressions/user/:userId/semaine
-```
-
-**Réponse:**
+#### 400 Bad Request
 ```json
 {
-  "totalPoints": 150,
-  "objectifsReussis": 12,
-  "totalObjectifs": 15,
-  "tauxReussite": 80
+  "success": false,
+  "error": "Validation failed",
+  "message": "Habit name is required"
 }
 ```
 
-### Utilisateurs
-
-#### Obtenir le profil
-```http
-GET /api/users/:id
-```
-
-#### Mettre à jour les points
-```http
-PUT /api/users/:id/points
-Content-Type: application/json
-
+#### 401 Unauthorized
+```json
 {
-  "points": 10
+  "success": false,
+  "error": "Authentication failed",
+  "message": "Please login again"
 }
 ```
 
-## 🔐 Sécurité
-
-- **Helmet**: Headers de sécurité HTTP
-- **Rate Limiting**: 100 requêtes/15 minutes par IP
-- **bcrypt**: Hash des mots de passe
-- **CORS**: Configuration CORS pour sécuriser les origines
-
-## 📊 Format de Données
-
-Le serveur utilise le format standard MongoDB avec `_id` comme clé primaire.
-
-Voir [MONGODB_FORMAT.md](../MONGODB_FORMAT.md) pour la documentation complète du format JSON.
-
-### Transformation automatique
-
-Tous les modèles incluent une transformation automatique:
-- `_id` converti en string
-- `createdAt` formaté en ISO8601
-- Champs sensibles supprimés (`motDePasse`, `__v`)
-
-## 🧪 Tests
-
-### Test avec curl
-
-```bash
-# Test de santé
-curl http://localhost:3000/
-
-# Créer un utilisateur
-curl -X POST http://localhost:3000/api/auth/inscription \
-  -H "Content-Type: application/json" \
-  -d '{"nom":"Test User","email":"test@example.com","motDePasse":"password123"}'
-
-# Créer une habitude
-curl -X POST http://localhost:3000/api/habitudes \
-  -H "Content-Type: application/json" \
-  -d '{"userId":"USER_ID","nom":"Test Habit","icone":"⭐"}'
+#### 404 Not Found
+```json
+{
+  "success": false,
+  "error": "Not found",
+  "message": "Habit not found or you do not have permission"
+}
 ```
 
-### Test avec Postman
+## Security Features
 
-Importer la collection Postman (à créer) avec tous les endpoints.
+### Firebase Token Verification
+- All `/habits` routes require valid Firebase token
+- Tokens verified using Firebase Admin SDK
+- Expired tokens automatically rejected
 
-## 🚢 Déploiement
+### Authorization
+- Users can only access their own habits
+- `userId` extracted from Firebase token (not request body)
+- All queries filtered by authenticated user
+
+### Rate Limiting
+- 100 requests per 15 minutes per IP
+- Prevents brute force attacks
+
+### Helmet
+- Sets secure HTTP headers
+- Prevents common vulnerabilities
+
+### CORS
+- Configurable allowed origins
+- Set `CORS_ORIGIN` in `.env` for production
+
+## Database
+
+### MongoDB Schema
+
+```javascript
+{
+  userId: String,        // Firebase UID (indexed)
+  name: String,          // Habit name (required, 1-100 chars)
+  createdAt: Date,       // Auto-generated
+  updatedAt: Date        // Auto-managed
+}
+```
+
+### Indexes
+
+```javascript
+// Single index for userId
+{ userId: 1 }
+
+// Compound index for efficient sorted queries
+{ userId: 1, createdAt: -1 }
+```
+
+## Deployment
+
+### Render.com
+
+1. Create new Web Service
+2. Connect GitHub repository
+3. Set build command: `npm install`
+4. Set start command: `npm start`
+5. Add environment variables:
+   - `MONGODB_URI`
+   - `FIREBASE_SERVICE_ACCOUNT_KEY`
+   - `NODE_ENV=production`
+   - `CORS_ORIGIN=your-frontend-url`
+
+### Railway.app
+
+1. Create new project
+2. Connect GitHub repository
+3. Add MongoDB plugin
+4. Set environment variables (same as Render)
 
 ### Heroku
 
 ```bash
-# Login Heroku
-heroku login
-
-# Créer l'app
-heroku create habit-coach-api
-
-# Configurer les variables
-heroku config:set MONGODB_URI="votre-uri-mongodb"
+heroku create your-app-name
+heroku config:set MONGODB_URI=your-mongodb-uri
+heroku config:set FIREBASE_SERVICE_ACCOUNT_KEY='{"type":"service_account",...}'
 heroku config:set NODE_ENV=production
-
-# Déployer
 git push heroku main
 ```
 
-### Railway / Render
+## Environment Variables
 
-1. Connecter le repository GitHub
-2. Configurer les variables d'environnement dans le dashboard
-3. Déployer automatiquement
+| Variable | Required | Description |
+|----------|----------|-------------|
+| `PORT` | No | Server port (default: 3000) |
+| `NODE_ENV` | No | Environment (development/production) |
+| `MONGODB_URI` | Yes | MongoDB connection string |
+| `FIREBASE_SERVICE_ACCOUNT_KEY` | Yes | Firebase service account JSON |
+| `CORS_ORIGIN` | No | Allowed origins (default: *) |
 
-## 📝 Logs
+## Testing
 
-Le serveur inclut des logs détaillés:
-- ✅ Succès en vert
-- ❌ Erreurs en rouge  
-- 📥 Requêtes entrantes
-- 🗑️ Suppressions
+### Manual Testing with curl
 
-Exemple:
+**Get token from Flutter app:**
+```dart
+final token = await FirebaseAuth.instance.currentUser?.getIdToken();
+print(token);
 ```
-📥 Creating habit: { userId: '...', nom: 'Méditation' }
-✅ Habit created: { _id: '...', nom: 'Méditation', ... }
-```
 
-## 🐛 Debugging
-
-Pour des logs plus détaillés:
-
+**Test API:**
 ```bash
-DEBUG=* npm run dev
+# Test without token (should fail)
+curl http://localhost:3000/habits
+
+# Test with token (should work)
+curl -H "Authorization: Bearer YOUR_TOKEN" \
+     http://localhost:3000/habits
 ```
 
-## 📦 Structure du Projet
+## Troubleshooting
 
+### Firebase Admin Error
 ```
-.backend/
-├── server.js          # Point d'entrée principal
-├── package.json       # Dépendances
-├── .env              # Configuration (ne pas commiter!)
-├── .env.example      # Template de configuration
-└── README.md         # Cette documentation
+Error: Could not load the default credentials
+```
+**Solution**: Check that `FIREBASE_SERVICE_ACCOUNT_KEY` is properly set in `.env`
+
+### MongoDB Connection Error
+```
+MongoDB connection error: ...
+```
+**Solution**: 
+- Check `MONGODB_URI` is correct
+- Ensure MongoDB is running
+- Check network/firewall settings
+
+### Token Verification Failed
+```
+Token verification failed: auth/id-token-expired
+```
+**Solution**: Token expired. Flutter app should request new token with:
+```dart
+await user.getIdToken(true); // Force refresh
 ```
 
-## ⚡ Performance
+## Support
 
-- **Rate Limiting**: Protection contre le spam
-- **Connection Pooling**: Mongoose gère le pool MongoDB
-- **JSON Transformation**: Optimisé avec toJSON
+For issues or questions:
+- Check the [implementation plan](../implementation_plan.md)
+- Review the [configuration guide](./CONFIGURATION.md)
+- Check server logs for detailed error messages
 
-## 🔄 Prochaines Étapes
+## License
 
-- [ ] Ajouter JWT pour authentification token
-- [ ] Implémenter la pagination
-- [ ] Ajouter des tests unitaires
-- [ ] Créer collection Postman
-- [ ] Ajouter logging avec Winston
-- [ ] Implémenter cache Redis
-
-## 💡 Support
-
-Pour toute question ou problème, créer une issue sur le repository.
-
-## 📄 Licence
-
-MIT
+ISC
